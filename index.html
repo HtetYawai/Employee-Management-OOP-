@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Employee Management</title>
+    <style>
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #f9f9f9;
+        }
+        header {
+            background-color: #4CAF50;
+            color: white;
+            padding: 10px 20px;
+            text-align: center;
+            font-size: 1.5em;
+        }
+        .container {
+            margin: 20px auto;
+            max-width: 900px;
+            background: white;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+        }
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-top: 20px;
+        }
+        th, td {
+            padding: 10px;
+            text-align: left;
+            border: 1px solid #ddd;
+        }
+        th {
+            background-color: #f2f2f2;
+        }
+        tr:nth-child(even) {
+            background-color: #f9f9f9;
+        }
+        tr:hover {
+            background-color: #f1f1f1;
+        }
+        button {
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            margin-top: 10px;
+            border-radius: 5px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        .error-message {
+            color: red;
+            font-weight: bold;
+        }
+        .form-container {
+            margin-top: 20px;
+        }
+    </style>
+</head>
+<body>
+    <header>Employee Management</header>
+    <div class="container">
+        <h2>Employee List</h2>
+        <table>
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Name</th>
+                    <th>Role</th>
+                </tr>
+            </thead>
+            <tbody id="employee-table-body">
+                <!-- Data will be inserted here -->
+            </tbody>
+        </table>
+        <button onclick="fetchEmployees()">Refresh Employee List</button>
+        
+        <div class="form-container">
+            <h3>Create a Project</h3>
+            <input type="text" id="project-name" placeholder="Project Name">
+            <input type="text" id="project-description" placeholder="Project Description">
+            <button onclick="createProject()">Create Project</button>
+        </div>
+        
+        <div class="form-container">
+            <h3>Assign Employee to Project</h3>
+            <select id="employee-select"></select>
+            <select id="project-select"></select>
+            <button onclick="assignEmployeeToProject()">Assign</button>
+        </div>
+
+        <h3>Project List</h3>
+        <table>
+            <thead>
+                <tr>
+                    <th>ID</th>
+                    <th>Name</th>
+                    <th>Description</th>
+                    <th>Employees</th>
+                </tr>
+            </thead>
+            <tbody id="project-table-body">
+                <!-- Data will be inserted here -->
+            </tbody>
+        </table>
+
+        <p id="error-message" class="error-message"></p>
+    </div>
+
+    <script>
+        async function fetchEmployees() {
+            const errorMessage = document.getElementById("error-message");
+            try {
+                const response = await fetch("http://127.0.0.1:8000/employees/");
+                if (!response.ok) {
+                    throw new Error("Failed to fetch employee data.");
+                }
+                const employees = await response.json();
+                const tableBody = document.getElementById("employee-table-body");
+                tableBody.innerHTML = ""; // Clear previous rows
+                const employeeSelect = document.getElementById("employee-select");
+                employeeSelect.innerHTML = ""; // Clear previous options
+                
+                employees.forEach(employee => {
+                    const row = document.createElement("tr");
+                    row.innerHTML = `
+                        <td>${employee.id}</td>
+                        <td>${employee.name}</td>
+                        <td>${employee.role}</td>
+                    `;
+                    tableBody.appendChild(row);
+
+                    // Add employee to select options for assignment
+                    const option = document.createElement("option");
+                    option.value = employee.id;
+                    option.textContent = `${employee.name} (${employee.role})`;
+                    employeeSelect.appendChild(option);
+                });
+                errorMessage.textContent = "";
+            } catch (error) {
+                errorMessage.textContent = error.message;
+            }
+        }
+
+        async function createProject() {
+            const name = document.getElementById("project-name").value;
+            const description = document.getElementById("project-description").value;
+            const errorMessage = document.getElementById("error-message");
+
+            if (!name || !description) {
+                errorMessage.textContent = "Both project name and description are required!";
+                return;
+            }
+
+            try {
+                const response = await fetch("http://127.0.0.1:8000/projects/", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({ name, description })
+                });
+
+                if (!response.ok) {
+                    throw new Error("Failed to create project.");
+                }
+
+                const project = await response.json();
+                errorMessage.textContent = "";
+                alert(`Project "${project.name}" created successfully!`);
+                fetchProjects();
+            } catch (error) {
+                errorMessage.textContent = error.message;
+            }
+        }
+
+        async function fetchProjects() {
+            const errorMessage = document.getElementById("error-message");
+            try {
+                const response = await fetch("http://127.0.0.1:8000/projects/");
+                if (!response.ok) {
+                    throw new Error("Failed to fetch project data.");
+                }
+                const projects = await response.json();
+                const tableBody = document.getElementById("project-table-body");
+                tableBody.innerHTML = ""; // Clear previous rows
+                const projectSelect = document.getElementById("project-select");
+                projectSelect.innerHTML = ""; // Clear previous options
+                
+                projects.forEach(project => {
+                    const row = document.createElement("tr");
+                    row.innerHTML = `
+                        <td>${project.id}</td>
+                        <td>${project.name}</td>
+                        <td>${project.description}</td>
+                        <td>${project.employees.join(", ")}</td>
+                    `;
+                    tableBody.appendChild(row);
+
+                    // Add project to select options for assignment
+                    const option = document.createElement("option");
+                    option.value = project.id;
+                    option.textContent = project.name;
+                    projectSelect.appendChild(option);
+                });
+                errorMessage.textContent = "";
+            } catch (error) {
+                errorMessage.textContent = error.message;
+            }
+        }
+
+        async function assignEmployeeToProject() {
+            const employeeId = document.getElementById("employee-select").value;
+            const projectId = document.getElementById("project-select").value;
+            const errorMessage = document.getElementById("error-message");
+
+            if (!employeeId || !projectId) {
+                errorMessage.textContent = "Both employee and project must be selected!";
+                return;
+            }
+
+            try {
+                const response = await fetch("http://127.0.0.1:8000/assign/", {
+                    method: "POST",
+                    headers: {
+                        "Content-Type": "application/json"
+                    },
+                    body: JSON.stringify({ employee_id: employeeId, project_id: projectId })
+                });
+
+                if (!response.ok) {
+                    throw new Error("Failed to assign employee to project.");
+                }
+
+                const result = await response.json();
+                errorMessage.textContent = "";
+                alert(result.message);
+                fetchProjects();
+            } catch (error) {
+                errorMessage.textContent = error.message;
+            }
+        }
+
+        // Initial load
+        fetchEmployees();
+        fetchProjects();
+    </script>
+</body>
+</html>
